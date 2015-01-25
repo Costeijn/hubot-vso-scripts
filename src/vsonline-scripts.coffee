@@ -39,7 +39,7 @@ util = require 'util'
 uuid = require 'node-uuid'
 request = require 'request'
 rssParser = require 'parse-rss'
-{TextMessage} = require 'hubot'
+#{TextMessage} = require 'hubot'
 https = require('https')
 fs = require('fs')
 
@@ -526,7 +526,7 @@ client_id=#{appId}\
         else
           definitions.push "Build definitions in account #{account}:"
           for build in buildDefinitions
-            definitions.push "{escapeIfNecessary build.name} (#{build.id})"
+            definitions.push "#{escapeIfNecessary build.name} (#{build.id})"
           reply msg, definitions.join "\n"
 
   robot.respond /vso build (.*)/i, (msg) ->
