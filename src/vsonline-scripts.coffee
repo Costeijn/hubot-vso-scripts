@@ -512,6 +512,25 @@ client_id=#{appId}\
         reply msg, projectsReply
 
   #########################################
+  # Pull requests related commands
+  #########################################
+  robot.respond /vso pullrequests/i, (msg) ->
+    runVsoCmd msg, cmd: (client) ->
+      pullrequests=[]
+
+      client.getRepositories(null, (err, repos) =>
+        pullrequests.push "Available pull requests"
+
+        for repo in repos
+          client.getPullRequests repo.id, (err, prs) ->
+            for pr in prs
+              pullrequests.push "#{escapeIfNecessary pr.title} opened by '#{pr.createdBy.displayName}'\n Merging '#{pr.sourceRefName}' into '#{pr.targetRefName}'"
+
+              reply msg, pullrequests.join "\n"
+      )
+
+
+  #########################################
   # Build related commands
   #########################################
   robot.respond /vso builds/i, (msg) ->
