@@ -26,6 +26,7 @@
     "node-uuid": "~1.4.1",
     "vso-client": "~0.2.1",
     "request": "~2.36.0",
-    "parse-rss":  "~0.1.1"
+    "parse-rss":  "~0.1.1",
+    "q": "~1.1.2"
   }
 }
