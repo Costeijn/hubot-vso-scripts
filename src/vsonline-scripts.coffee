@@ -39,9 +39,10 @@ util = require 'util'
 uuid = require 'node-uuid'
 request = require 'request'
 rssParser = require 'parse-rss'
-#{TextMessage} = require 'hubot'
+{TextMessage} = require 'hubot'
 https = require('https')
 fs = require('fs')
+q = require('q')
 
 
 #########################################
@@ -514,21 +515,49 @@ client_id=#{appId}\
   #########################################
   # Pull requests related commands
   #########################################
-  robot.respond /vso pullrequests/i, (msg) ->
+  robot.respond /vso pull requests/i, (msg) ->
     runVsoCmd msg, cmd: (client) ->
-      pullrequests=[]
+      pullrequests = []
+      repositories = {}
 
-      client.getRepositories(null, (err, repos) =>
-        pullrequests.push "Available pull requests"
+      q_client = {
+        getRepositories: q.nbind(client.getRepositories, client),
+        getPullRequests: q.nbind(client.getPullRequests, client),
+        getPullRequest: q.nbind(client.getPullRequest, client)
+      }
 
+      q_client.getRepositories(null)
+      .then((repos) =>
+        pms = []
         for repo in repos
-          client.getPullRequests repo.id, (err, prs) ->
-            for pr in prs
-              pullrequests.push "#{escapeIfNecessary pr.title} opened by '#{pr.createdBy.displayName}'\n Merging '#{pr.sourceRefName}' into '#{pr.targetRefName}'"
+          repositories[repo.id] = repo.name
+          pms.push(q_client.getPullRequests(repo.id))
 
-              reply msg, pullrequests.join "\n"
+        return q.all(pms)
       )
+      .then((all_prs) =>
+        pms = []
+        for prs in all_prs
+          for pr in prs
+            if pr.status is 'active'
+              pms.push(q_client.getPullRequest(pr.repository.id, pr.pullRequestId))
 
+        return q.all(pms)
+      ,(err) =>
+        console.log(err)
+      )
+      .then((prs) =>
+        for pr in prs
+          line = "#{escapeIfNecessary pr.title} opened by '#{pr.createdBy.displayName}'\n"
+          line += "Merging '#{pr.sourceRefName}' into '#{pr.targetRefName}' of repository #{repositories[pr.repository.id]} \n"
+          line += "Reviewers '#{pr.reviewers.map((r) -> r.displayName + ', ')}'\n"
+          line += "Details available at #{pr.url}"
+
+          pullrequests.push line
+
+        reply msg, pullrequests.join "\n\n"
+      )
+      .done()
 
   #########################################
   # Build related commands
@@ -869,9 +898,10 @@ client_id=#{appId}\
   # Unhandled VSO command
   #########################################
   robot.catchAll (msg) ->
-    return unless msg.message.text.toLowerCase().indexOf(" vso ") isnt -1
-    msg.send """This command was not understood: #{msg.message.text}.
-      Run 'hubot help vso' to see a list of Visual Studio Online commands."""
+    if msg.message.txt
+      return unless msg.message.text.toLowerCase().indexOf(" vso ") isnt -1
+      msg.send """This command was not understood: #{msg.message.text}.
+        Run 'hubot help vso' to see a list of Visual Studio Online commands."""
 
 getStartDate = (numDays) ->
   date = new Date()
