@@ -30,6 +30,8 @@
 #   hubot vso me - Shows info about your Visual Studio Online profile
 #   hubot vso forget credentials - Removes the access token issued to Hubot when you accepted the authorization request
 #   hubot vso status - Shows status for the Visual Studio Online service
+#   hubot vso pull requests - Shows all active pull requests
+#   hubot vso pull request create <title> from <source> to <master> in <repo>
 #   hubot vso help <search text> - Get help from VS related forums about the <search text>
 #
 # Notes:
@@ -515,6 +517,42 @@ client_id=#{appId}\
   #########################################
   # Pull requests related commands
   #########################################
+
+  #   hubot vso pull request create <title> from <source> to <master> in <repo>
+  #robot.respond /vso create (PBI|Requirement|Task|Feature|Impediment|Bug) (?:(?:(.*) with description($|[\s\S]+)?)|(.*))/im, (msg) ->
+
+  robot.respond /vso pull request close (.*)/im, (msg) ->
+    runVsoCmd msg, cmd: (client) ->
+      
+
+
+  robot.respond /vso pull request create (?:(?:(.*) from ($|[\s\S]+) to ($|[\s\S]+) in ($|[\s\S]+)|(.*)))/im, (msg) ->
+    runVsoCmd msg, cmd: (client) ->
+      pullRequest =
+        sourceRefName: 'refs/heads/' + msg.match[2]
+        targetRefName: 'refs/heads/' + msg.match[3]
+        title: msg.match[1]
+      target_repo = encodeURI msg.match[4]
+
+      q_client = {
+        getRepositories: q.nbind(client.getRepositories, client),
+      }
+
+      q_client.getRepositories(null)
+      .then((repos) =>
+        repositories = {}
+        for repo in repos
+          repositories[repo.name] = repo.id
+
+        console.log(target_repo)
+        console.log(repositories[target_repo])
+
+        client.createPullRequest(repositories[target_repo], pullRequest, (err, pr) =>
+          console.log(pr)
+        )
+      )
+
+
   robot.respond /vso pull requests/i, (msg) ->
     runVsoCmd msg, cmd: (client) ->
       pullrequests = []
@@ -547,10 +585,13 @@ client_id=#{appId}\
         console.log(err)
       )
       .then((prs) =>
+        pullrequests.push(null)
         for pr in prs
           line = "#{escapeIfNecessary pr.title} opened by '#{pr.createdBy.displayName}'\n"
           line += "Merging '#{pr.sourceRefName}' into '#{pr.targetRefName}' of repository #{repositories[pr.repository.id]} \n"
-          line += "Reviewers '#{pr.reviewers.map((r) -> r.displayName + ', ')}'\n"
+          if pr.reviewers
+            line += "Reviewers '#{pr.reviewers.map((r) -> r.displayName + ', ')}'\n"
+
           line += "Details available at #{pr.url}"
 
           pullrequests.push line
