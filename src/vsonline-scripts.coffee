@@ -518,14 +518,6 @@ client_id=#{appId}\
   # Pull requests related commands
   #########################################
 
-  #   hubot vso pull request create <title> from <source> to <master> in <repo>
-  #robot.respond /vso create (PBI|Requirement|Task|Feature|Impediment|Bug) (?:(?:(.*) with description($|[\s\S]+)?)|(.*))/im, (msg) ->
-
-  robot.respond /vso pull request close (.*)/im, (msg) ->
-    runVsoCmd msg, cmd: (client) ->
-      
-
-
   robot.respond /vso pull request create (?:(?:(.*) from ($|[\s\S]+) to ($|[\s\S]+) in ($|[\s\S]+)|(.*)))/im, (msg) ->
     runVsoCmd msg, cmd: (client) ->
       pullRequest =
